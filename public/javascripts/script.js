@@ -7,22 +7,37 @@ const socket = io();
 socket.emit("join-room", "<%= roomId %>");
 
 let myMarker = null;
+let isFirstUpdate = true; 
 function updateUserMarker(latitude, longitude) {
   if (myMarker) {
     myMarker.setLatLng([latitude, longitude]);
   } else {
     myMarker = L.marker([latitude, longitude]).addTo(map);
   }
+  if (isFirstUpdate) {
+    map.setView([latitude, longitude], 16);
+    isFirstUpdate = false;
+  }
 }
+
 socket.on("location", (data) => {
   const { id, latitude, longitude } = data;
-  map.setView([latitude, longitude], 16);
 
   if (id !== socket.id) {
-    const marker = L.marker([latitude, longitude]).addTo(map);
-    marker.id = id;
+    const existingMarker = map.eachLayer((layer) => {
+      if (layer instanceof L.Marker && layer.id === id) {
+        layer.setLatLng([latitude, longitude]);
+        return layer;
+      }
+    });
+
+    if (!existingMarker) {
+      const marker = L.marker([latitude, longitude]).addTo(map);
+      marker.id = id;
+    }
   }
 });
+
 socket.on("user-disconnected", (id) => {
   map.eachLayer((layer) => {
     if (layer instanceof L.Marker && layer.id === id) {
@@ -30,6 +45,7 @@ socket.on("user-disconnected", (id) => {
     }
   });
 });
+
 setInterval(() => {
   navigator.geolocation.getCurrentPosition(
     (position) => {
