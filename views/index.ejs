@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Tracker Landing Page</title>
+  </head>
+  <body>
+    <h1>Welcome to Live Tracker</h1>
+    <button onclick="createRoom()">Create New Room</button>
+
+    <div id="roomLinkContainer">
+      <p id="roomLink"></p>
+    </div>
+
+    <script>
+      function createRoom() {
+        fetch("/create-room", { method: "POST" })
+          .then((response) => response.json())
+          .then((data) => {
+            document.getElementById(
+              "roomLink"
+            ).innerHTML = `Room ID: <a href="/room/${data.roomId}">https://live-location-tracker-ld58.onrender.com/room/${data.roomId}</a>`;
+          })
+          .catch((error) => console.error("Error creating room:", error));
+      }
+    </script>
+  </body>
+</html>
