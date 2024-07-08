@@ -28,16 +28,11 @@
       const socket = io();
       socket.emit("join-room", "<%= roomId %>");
 
-      let myMarker = null;
       let isFirstUpdate = true;
       const markers = {};
 
-      function updateUserMarker(latitude, longitude) {
-        if (myMarker) {
-          myMarker.setLatLng([latitude, longitude]);
-        } else {
-          myMarker = L.marker([latitude, longitude]).addTo(map);
-        }
+      function addMarker(latitude, longitude) {
+        const marker = L.marker([latitude, longitude]).addTo(map);
         if (isFirstUpdate) {
           map.setView([latitude, longitude], 16);
           isFirstUpdate = false;
@@ -48,16 +43,16 @@
         const { id, latitude, longitude } = data;
         if (id !== socket.id) {
           if (markers[id]) {
-            markers[id].setLatLng([latitude, longitude]);
+            markers[id].push(L.marker([latitude, longitude]).addTo(map));
           } else {
-            markers[id] = L.marker([latitude, longitude]).addTo(map);
+            markers[id] = [L.marker([latitude, longitude]).addTo(map)];
           }
         }
       });
 
       socket.on("user-disconnected", (id) => {
         if (markers[id]) {
-          map.removeLayer(markers[id]);
+          markers[id].forEach((marker) => map.removeLayer(marker));
           delete markers[id];
         }
       });
@@ -71,7 +66,7 @@
               latitude,
               longitude,
             });
-            updateUserMarker(latitude, longitude);
+            addMarker(latitude, longitude);
           },
           (error) => {
             console.error("Geolocation error:", error);
