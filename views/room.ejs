@@ -19,6 +19,70 @@
     </div>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/javascripts/script.js"></script>
+    <script>
+      const map = L.map("map").setView([0, 0], 2);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+        map
+      );
+
+      const socket = io();
+      socket.emit("join-room", "<%= roomId %>");
+
+      let myMarker = null;
+      let isFirstUpdate = true;
+      const markers = {};
+
+      function updateUserMarker(latitude, longitude) {
+        if (myMarker) {
+          myMarker.setLatLng([latitude, longitude]);
+        } else {
+          myMarker = L.marker([latitude, longitude]).addTo(map);
+        }
+        if (isFirstUpdate) {
+          map.setView([latitude, longitude], 16);
+          isFirstUpdate = false;
+        }
+      }
+
+      socket.on("location", (data) => {
+        const { id, latitude, longitude } = data;
+        if (id !== socket.id) {
+          if (markers[id]) {
+            markers[id].setLatLng([latitude, longitude]);
+          } else {
+            markers[id] = L.marker([latitude, longitude]).addTo(map);
+          }
+        }
+      });
+
+      socket.on("user-disconnected", (id) => {
+        if (markers[id]) {
+          map.removeLayer(markers[id]);
+          delete markers[id];
+        }
+      });
+
+      setInterval(() => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            socket.emit("send-location", {
+              roomId: "<%= roomId %>",
+              latitude,
+              longitude,
+            });
+            updateUserMarker(latitude, longitude);
+          },
+          (error) => {
+            console.error("Geolocation error:", error);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0,
+          }
+        );
+      }, 5000);
+    </script>
   </body>
 </html>
