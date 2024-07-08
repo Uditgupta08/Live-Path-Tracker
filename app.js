@@ -26,17 +26,24 @@ app.get("/room/:roomId", (req, res) => {
 });
 
 io.on("connection", (socket) => {
-  console.log("CONNECTED");
+  console.log("User connected:", socket.id);
+
   socket.on("join-room", (roomId) => {
     socket.join(roomId);
-    console.log(`User joined room: ${roomId}`);
+    console.log(`User ${socket.id} joined room: ${roomId}`);
   });
+
   socket.on("send-location", (data) => {
     const { roomId, latitude, longitude } = data;
-    console.log(`Sending location to room ${roomId}:`, { latitude, longitude });
+    console.log(`User ${socket.id} sending location to room ${roomId}:`, {
+      latitude,
+      longitude,
+    });
     io.to(roomId).emit("location", { id: socket.id, latitude, longitude });
   });
+
   socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
     io.emit("user-disconnected", socket.id);
   });
 });
