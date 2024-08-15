@@ -7,34 +7,30 @@ const socket = io();
 socket.emit("join-room", "<%= roomId %>");
 
 let myMarker = null;
-let isFirstUpdate = true; 
+let initialZoomDone = false;
 function updateUserMarker(latitude, longitude) {
   if (myMarker) {
     myMarker.setLatLng([latitude, longitude]);
   } else {
     myMarker = L.marker([latitude, longitude]).addTo(map);
   }
-  if (isFirstUpdate) {
-    map.setView([latitude, longitude], 16);
-    isFirstUpdate = false;
-  }
+}
+
+function centerMapOnLocation(latitude, longitude) {
+  map.setView([latitude, longitude], 16);
 }
 
 socket.on("location", (data) => {
   const { id, latitude, longitude } = data;
 
-  if (id !== socket.id) {
-    const existingMarker = map.eachLayer((layer) => {
-      if (layer instanceof L.Marker && layer.id === id) {
-        layer.setLatLng([latitude, longitude]);
-        return layer;
-      }
-    });
+  if (id === socket.id && !initialZoomDone) {
+    centerMapOnLocation(latitude, longitude);
+    initialZoomDone = true;
+  }
 
-    if (!existingMarker) {
-      const marker = L.marker([latitude, longitude]).addTo(map);
-      marker.id = id;
-    }
+  if (id !== socket.id) {
+    const marker = L.marker([latitude, longitude]).addTo(map);
+    marker.id = id;
   }
 });
 
@@ -67,3 +63,27 @@ setInterval(() => {
     }
   );
 }, 5000);
+const button = document.createElement("button");
+button.textContent = "Go to My Location";
+button.style.position = "absolute";
+button.style.top = "10px";
+button.style.right = "10px";
+button.style.zIndex = "1000";
+document.body.appendChild(button);
+
+button.addEventListener("click", () => {
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+      centerMapOnLocation(latitude, longitude);
+    },
+    (error) => {
+      console.error("Geolocation error:", error);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 5000,
+      maximumAge: 0,
+    }
+  );
+});
